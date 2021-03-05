@@ -5,9 +5,9 @@
 #ifndef DAYBREAK3D_GFX_TYPES_H
 #define DAYBREAK3D_GFX_TYPES_H
 
+#include <daybreak/hedley.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <daybreak/hedley.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,16 +50,16 @@ enum {
  * The currently active backend, queried using @sa d3_query_backend()
  */
 typedef enum d3_backend {
-    D3_BACKEND_GLCORE33 = 'GL33',
-    D3_BACKEND_GLES2 = 'GES2',
-    D3_BACKEND_GLES3 = 'GES3',
-    D3_BACKEND_D3D11 = 'D311',
-    D3_BACKEND_METAL_IOS = 'MTLI',
-    D3_BACKEND_METAL_MACOS = 'MTLM',
-    D3_BACKEND_METAL_SIMULATOR = 'MTLS',
-    D3_BACKEND_VULKAN = 'VLKN',
-    D3_BACKEND_WGPU = 'WGPU',
-    D3_BACKEND_NULL = 'NULL'
+    D3_BACKEND_GLCORE33,
+    D3_BACKEND_GLES2,
+    D3_BACKEND_GLES3,
+    D3_BACKEND_D3D11,
+    D3_BACKEND_METAL_IOS,
+    D3_BACKEND_METAL_MACOS,
+    D3_BACKEND_METAL_SIMULATOR,
+    D3_BACKEND_VULKAN,
+    D3_BACKEND_WGPU,
+    D3_BACKEND_NULL,
 } d3_backend;
 
 #define D3_IS_BACKEND_GLES(backend) (backend == D3_BACKEND_GLES2 || backend == D3_BACKEND_GLES3)
@@ -663,14 +663,20 @@ typedef struct d3_vulkan_context_win32 {
     void *hwnd;
 } d3_vulkan_context_win32;
 
+typedef struct d3_vulkan_context_linux_t {
+    void *param0;
+    void *param1;
+} d3_vulkan_context_linux;
+
+typedef int(*d3_vulkan_create_surface_khr)(void* instance, void* userdata, void* allocator, void* surface);
+
 typedef struct d3_vulkan_context_desc {
-    uint32_t extension_count;
-    const char **extensions;
     int w;
     int h;
     union {
         d3_vulkan_context_win32 win32;
-    };
+        d3_vulkan_context_linux linux_;
+    } ctx;
 } d3_vulkan_context_desc;
 
 typedef struct d3_context_desc {
@@ -683,7 +689,7 @@ typedef struct d3_context_desc {
         d3_d3d11_context_desc d3d11;
         d3_wgpu_context_desc wgpu;
         d3_vulkan_context_desc vulkan;
-    };
+    } ctx;
 } d3_context_desc;
 
 typedef struct d3_desc {

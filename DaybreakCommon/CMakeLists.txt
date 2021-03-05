@@ -1,6 +1,6 @@
 set(db3d_common_srcs
-        src/pools.c
         src/assert.c
+        src/pools.c
         )
 
 add_library(DB3D_Common STATIC ${db3d_common_srcs})
@@ -10,6 +10,9 @@ target_include_directories(DB3D_Common PUBLIC
         $<INSTALL_INTERFACE:include>
         )
 set_target_properties(DB3D_Common PROPERTIES C_STANDARD 11)
+target_compile_options(DB3D_Common PRIVATE
+        $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
+        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic -Werror>)
 
 install(TARGETS DB3D_Common
         EXPORT db3d_targets

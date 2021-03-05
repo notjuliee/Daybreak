@@ -130,7 +130,7 @@ void d3i_resolve_default_pass_action(const d3_pass_action *from, d3_pass_action 
     }
     if (to->stencil.action == _D3_ACTION_DEFAULT) {
         to->stencil.action = D3_ACTION_CLEAR;
-        to->stencil.val = 1.0f;
+        to->stencil.val = 1;
     }
 }
 

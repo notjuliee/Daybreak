@@ -4,6 +4,7 @@
 
 #include <daybreak/utils/assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 vk_queues find_queue_families(VkPhysicalDevice dev) {
     vk_queues queues = {0};
@@ -13,7 +14,7 @@ vk_queues find_queue_families(VkPhysicalDevice dev) {
     VkQueueFamilyProperties *queue_families = malloc(sizeof(VkQueueFamilyProperties) * queue_family_count);
     vkGetPhysicalDeviceQueueFamilyProperties(dev, &queue_family_count, queue_families);
 
-    for (int i = 0; i < queue_family_count; i++) {
+    for (uint32_t i = 0; i < queue_family_count; i++) {
         if (queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
             queues.graphics_family = i;
             queues.graphics_family_found = true;
@@ -29,6 +30,8 @@ vk_queues find_queue_families(VkPhysicalDevice dev) {
             break;
         }
     }
+
+    free(queue_families);
     return queues;
 }
 
@@ -44,7 +47,7 @@ bool is_device_suitable(VkPhysicalDevice device) {
     vkEnumerateDeviceExtensionProperties(device, NULL, &ext_count, ext_props);
 
     int found_exts = 0;
-    for (int i = 0; i < ext_count; i++) {
+    for (uint32_t i = 0; i < ext_count; i++) {
         for (int y = 0; y < _g.extensions.dev_num; y++) {
             if (strcmp(ext_props[i].extensionName, _g.extensions.dev[y]) == 0) {
                 found_exts++;
@@ -55,6 +58,8 @@ bool is_device_suitable(VkPhysicalDevice device) {
     if (found_exts < _g.extensions.dev_num) {
         return false;
     }
+
+    free(ext_props);
 
     vk_swapchain_details sc_details = get_sc_details(device, false);
     if (sc_details.num_present_modes < 1 || sc_details.num_formats < 1) {
@@ -110,7 +115,7 @@ void resolve_extensions() {
     VkExtensionProperties *ext_props = malloc(sizeof(VkExtensionProperties) * ext_count);
     vkEnumerateDeviceExtensionProperties(_g.phys_dev, NULL, &ext_count, ext_props);
 
-    for (int i = 0; i < ext_count; i++) {
+    for (uint32_t i = 0; i < ext_count; i++) {
         for (int y = 0; y < _g.extensions.dev_opt_num; y++) {
             if (strcmp(ext_props[i].extensionName, _g.extensions.dev_opt[y]) == 0) {
                 add_extension(_g.extensions.dev_opt[y], NULL);
@@ -119,6 +124,8 @@ void resolve_extensions() {
             }
         }
     }
+
+    free(ext_props);
 }
 
 VkExtent2D get_sc_extent(const VkSurfaceCapabilitiesKHR *caps) {
@@ -126,10 +133,15 @@ VkExtent2D get_sc_extent(const VkSurfaceCapabilitiesKHR *caps) {
         return caps->currentExtent;
     }
 
+    HEDLEY_DIAGNOSTIC_PUSH
+    HEDLEY_DIAGNOSTIC_DISABLE_UNKNOWN_PRAGMAS
+#pragma warning(disable : 4018)
+#pragma GCC diagnostic ignored "-Wsign-compare"
     return (VkExtent2D){
         .width = d3i_clamp(_g.width, caps->minImageExtent.width, caps->maxImageExtent.width),
         .height = d3i_clamp(_g.height, caps->minImageExtent.height, caps->maxImageExtent.height),
     };
+    HEDLEY_DIAGNOSTIC_POP
 }
 
 void vk_recreate_swapchain() {
@@ -143,11 +155,14 @@ void vk_recreate_swapchain() {
 }
 
 void vk_create_cbs() {
+    _g.command_buffers = malloc(sizeof(VkCommandBuffer) * _g.swapchain.num_images);
+    memset(_g.command_buffers, 0, sizeof(VkCommandBuffer) * _g.swapchain.num_images);
     VkCommandBufferAllocateInfo cb_ai = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .commandPool = _g.command_pool,
         .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
         .commandBufferCount = _g.swapchain.num_images,
     };
-    ASSERT(vkAllocateCommandBuffers(_g.dev, &cb_ai, _g.command_buffers) == VK_SUCCESS);
+    VkResult res = vkAllocateCommandBuffers(_g.dev, &cb_ai, _g.command_buffers);
+    ASSERT(res == VK_SUCCESS);
 }

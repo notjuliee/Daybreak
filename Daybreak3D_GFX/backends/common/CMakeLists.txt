@@ -19,6 +19,10 @@ target_include_directories(DB3D_GFX_BackendCommon PUBLIC
         $<INSTALL_INTERFACE:include>
         )
 target_link_libraries(DB3D_GFX_BackendCommon PUBLIC Daybreak3D::DB3D_GFX)
+target_compile_options(DB3D_GFX_BackendCommon PRIVATE
+        $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
+        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -pedantic -Werror>)
+set_property(TARGET DB3D_GFX_BackendCommon PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 install(TARGETS DB3D_GFX_BackendCommon
         EXPORT db3d_targets

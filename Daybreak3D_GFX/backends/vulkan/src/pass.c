@@ -8,7 +8,7 @@
 
 #include <daybreak/utils/assert.h>
 
-d3_resource_state _make_pass(vk_pass *pass, const d3_pass_desc *desc) {
+db_resource_state _make_pass(vk_pass *pass, const d3_pass_desc *desc) {
     d3i_pass_common_init(&pass->common, desc);
     VkAttachmentDescription color_atts[D3_MAX_COLOR_ATTACHMENTS] = {0};
     for (int i = 0; i < pass->common.num_color_atts; i++) {
@@ -44,9 +44,9 @@ d3_pass d3_make_pass(const d3_pass_desc *desc) {
         if (d3i_validate_pass_desc(&def)) {
             pass->slot.state = _make_pass(pass, &def);
         } else {
-            pass->slot.state = D3_RESOURCESTATE_FAILED;
+            pass->slot.state = DB_RESOURCESTATE_FAILED;
         }
-        ASSERT((pass->slot.state == D3_RESOURCESTATE_FAILED) || (pass->slot.state == D3_RESOURCESTATE_VALID));
+        ASSERT((pass->slot.state == DB_RESOURCESTATE_FAILED) || (pass->slot.state == DB_RESOURCESTATE_VALID));
     } else {
         D3I_TRACE(err_pass_pool_exhausted);
     }
@@ -55,10 +55,13 @@ d3_pass d3_make_pass(const d3_pass_desc *desc) {
 }
 
 void d3_destroy_pass(d3_pass pass) {
+    ((void)sizeof(pass));
     ASSERT(false); // TODO
-};
+}
 
 void d3_begin_default_pass(const d3_pass_action *pass_action, int width, int height) {
+    ((void)sizeof(width));
+    ((void)sizeof(height));
     d3_pass_action def = d3i_pass_action_defaults(pass_action);
     VkResult res = vkAcquireNextImageKHR(_g.dev, _g.swapchain.swapchain, UINT64_MAX, _g.image_avail_semaphore[_g.frame_index],
         VK_NULL_HANDLE, &_g.swapchain.index);
@@ -119,7 +122,7 @@ void d3_end_pass(void) {
     };
     vkResetFences(_g.dev, 1, &_g.inflight_fences[_g.frame_index]);
     ASSERT(vkQueueSubmit(_g.queues.graphics, 1, &submit_ci, _g.inflight_fences[_g.frame_index]) == VK_SUCCESS);
-};
+}
 
 void vk_create_default_pass() {
     VkAttachmentDescription color_att = {

@@ -51,11 +51,11 @@ if (DB3D_BUILD_GFX)
 endif ()
 
 if (DB3D_BUILD_EDITOR)
-    add_subdirectory(Daybreak3D_Editor)
+    #add_subdirectory(Daybreak3D_Editor)
 endif ()
 
 if (DB3D_BUILD_LAUNCHER)
-    add_subdirectory(DaybreakLauncher)
+    #add_subdirectory(DaybreakLauncher)
 endif ()
 
 install(EXPORT db3d_targets

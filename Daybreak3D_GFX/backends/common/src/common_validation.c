@@ -241,11 +241,13 @@ bool d3i_validate_shader_desc(const d3_shader_desc *desc) {
     }
 
     return _validate_end();
-#endif
+#else
     return true;
+#endif
 }
 
 bool d3i_validate_pipeline_desc(const d3_pipeline_desc *desc) {
+    ((void)sizeof(desc));
     // TODO: Validate
     printf("WARN: NON VALIDATED PIPELINE DESC\n");
     return true;
@@ -261,8 +263,6 @@ bool d3i_validate_pass_desc(const d3_pass_desc *desc) {
     _validate(desc->_start_canary == 0, D3_VALIDATE_PASSDESC_CANARY);
     _validate(desc->_end_canary == 0, D3_VALIDATE_PASSDESC_CANARY);
     bool atts_cont = true;
-    d3_pixel_format color_fmt = D3_PIXELFORMAT_NONE;
-    int width = -1, height = -1, sample_count = -1;
     for (int att_index = 0; att_index < D3_MAX_COLOR_ATTACHMENTS; att_index++) {
         const d3_attachment_desc *att = &desc->color_attachments[att_index];
         if (att->image.id == D3_INVALID_ID) {

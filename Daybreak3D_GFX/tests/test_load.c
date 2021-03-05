@@ -4,20 +4,21 @@
 
 #include <daybreak/gfx_loader/loader.h>
 
-#define GLFW_EXPOSE_NATIVE_WIN32
 #define GLFW_INCLUDE_NONE
+#ifdef linux
+#define GLFW_EXPOSE_NATIVE_X11
+#endif
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
+#include <stdbool.h>
 #include <stdio.h>
 
 #include "test_shaders.h"
 
 static bool should_render = true;
-
-static void fb_cb(GLFWwindow *win, int width, int height) {
-    printf("%d %d\n", width, height);
-    should_render = (width + height > 0);
+void win_size_cb(GLFWwindow *win, int width, int height) {
+    should_render = (width + height) > 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -38,9 +39,8 @@ int main(int argc, char *argv[]) {
     char name_buf[512] = {0};
     snprintf(name_buf, 512, "Daybreak3D Test (%s)", name);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-    GLFWwindow *win = glfwCreateWindow(1280, 720, name_buf, 0, 0);
-    glfwSetFramebufferSizeCallback(win, fb_cb);
+    GLFWwindow *win = glfwCreateWindow(1280, 720, name, NULL, NULL);
+    glfwSetWindowSizeCallback(win, win_size_cb);
 
     d3_desc desc = {
         .context =
@@ -50,12 +50,13 @@ int main(int argc, char *argv[]) {
     };
 
     if (backend == D3_BACKEND_VULKAN) {
-        desc.context.vulkan.extensions = glfwGetRequiredInstanceExtensions(&desc.context.vulkan.extension_count);
-        desc.context.vulkan.win32.hwnd = glfwGetWin32Window(win);
+        d3_vulkan_context_linux *wmi = &desc.context.ctx.vulkan.ctx.linux_;
+        wmi->param0 = (void*)glfwGetX11Display();
+        wmi->param1 = (void*)glfwGetX11Window(win);
     } else if (backend == D3_BACKEND_D3D11) {
-        desc.context.d3d11.hwnd = glfwGetWin32Window(win);
-        desc.context.d3d11.w = 1280;
-        desc.context.d3d11.h = 720;
+        /*desc.context.ctx.d3d11.hwnd = glfwGetWin32Window(win);
+        desc.context.ctx.d3d11.w = 1280;
+        desc.context.ctx.d3d11.h = 720;*/
     }
 
     d3_setup(&desc);
@@ -139,8 +140,8 @@ int main(int argc, char *argv[]) {
     d3_pass_action pass_action = {0};
 
     while (!glfwWindowShouldClose(win)) {
+        glfwPollEvents();
         if (should_render) {
-            glfwPollEvents();
             d3_begin_default_pass(&pass_action, 1280, 720);
             d3_apply_pipeline(pip);
             // d3_apply_bindings(&binds);

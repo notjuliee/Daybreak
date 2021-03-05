@@ -1,6 +1,6 @@
 #include "d3d11_bindings.h"
 
-#include "db3d/backend/validation.h"
+#include <daybreak/utils/assert.h>
 #include "state.h"
 
 D3I_PRIVATE void _apply_bindings(d_pipeline *pip, d_buffer **vbs, const int *vb_offsets, int num_vbs, d_buffer *ib,

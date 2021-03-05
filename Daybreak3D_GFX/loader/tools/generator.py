@@ -39,20 +39,29 @@ extern pfn_{1} db3d_loader_{1};
 
 
 def generate_source():
+    if os.name == "nt":
+        prelude = """#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#define dlopen(x, y) ((void*)LoadLibraryA(x))
+#define dlsym(x, y) GetProcAddress((HMODULE)x, y)
+#define RTLD_LAZY 0
+"""
+    elif os.name == "posix":
+        prelude = "#include <dlfcn.h>"
+    
     output_source = """// Generated using {generator} on {date}
 #include <daybreak/gfx_loader/loader.h>
-#define WIN32_LEAN_AND_MEAN
+""" + prelude + """
 #include <stdio.h>
-#include <windows.h>
 {extern_defs}
-static HINSTANCE hDLL = NULL;
+static void* hDLL = NULL;
 bool d3_loader_load(const char* plugin_path) {{
-hDLL = LoadLibraryA(plugin_path);
+hDLL = dlopen(plugin_path, RTLD_LAZY);
 if (!hDLL) return false;
 bool ret = true;
 {method_loads}
 if (!ret) return false;
-bool (*can_load)(void) = (bool (*)(void))GetProcAddress((HMODULE)hDLL, "__d3_can_load");
+bool (*can_load)(void) = (bool (*)(void))dlsym(hDLL, "__d3_can_load");
 return can_load && can_load();
 }}
 """
@@ -62,7 +71,7 @@ return can_load && can_load();
 
     for match in in_defs:
         extern_defs += "pfn_{1} db3d_loader_{1} = 0;".format(*match)
-        method_loads += """db3d_loader_{1} = (pfn_{1})GetProcAddress((HMODULE)hDLL, "{1}");
+        method_loads += """db3d_loader_{1} = (pfn_{1})dlsym(hDLL, "{1}");
 if (!db3d_loader_{1}) {{
 printf("Plugin %s missing method {1}\\n", plugin_path);
 ret = false;

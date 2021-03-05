@@ -8,7 +8,7 @@ enum {
     VK_MAX_EXTENSIONS = 8,
 };
 
-typedef struct {
+typedef struct vk_state_t {
     VkInstance instance;
     VkPhysicalDevice phys_dev;
     VkDevice dev;

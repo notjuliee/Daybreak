@@ -146,7 +146,7 @@ d3_pass_action d3i_pass_action_defaults(const d3_pass_action *action) {
     }
     if (pa.stencil.action == _D3_ACTION_DEFAULT) {
         pa.stencil.action = D3_ACTION_CLEAR;
-        pa.stencil.val = 1.0f;
+        pa.stencil.val = 1;
     }
 
     return pa;

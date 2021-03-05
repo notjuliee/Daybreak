@@ -7,7 +7,9 @@
 
 #include <daybreak/utils/assert.h>
 
-D3I_PRIVATE d3_resource_state _make_shader(vk_shader *shd, const d3_shader_desc *desc) {
+#include <string.h>
+
+D3I_PRIVATE db_resource_state _make_shader(vk_shader *shd, const d3_shader_desc *desc) {
     d3i_shader_common_init(&shd->common, desc);
     // Vertex
     VkShaderModuleCreateInfo ci = {
@@ -16,14 +18,14 @@ D3I_PRIVATE d3_resource_state _make_shader(vk_shader *shd, const d3_shader_desc 
         .pCode = (uint32_t *)desc->vs.byte_code,
     };
     if (vkCreateShaderModule(_g.dev, &ci, NULL, &shd->vs) != VK_SUCCESS) {
-        return D3_RESOURCESTATE_FAILED;
+        return DB_RESOURCESTATE_FAILED;
     }
 
     ci.codeSize = desc->fs.byte_code_size;
     ci.pCode = (uint32_t *)desc->fs.byte_code;
     if (vkCreateShaderModule(_g.dev, &ci, NULL, &shd->fs) != VK_SUCCESS) {
         vkDestroyShaderModule(_g.dev, shd->vs, NULL);
-        return D3_RESOURCESTATE_FAILED;
+        return DB_RESOURCESTATE_FAILED;
     }
 
     shd->fs_ci = (VkPipelineShaderStageCreateInfo){
@@ -39,7 +41,7 @@ D3I_PRIVATE d3_resource_state _make_shader(vk_shader *shd, const d3_shader_desc 
         .pName = "main",
     };
 
-    return D3_RESOURCESTATE_VALID;
+    return DB_RESOURCESTATE_VALID;
 }
 
 EXPORT d3_shader d3_make_shader(const d3_shader_desc *desc) {
@@ -54,9 +56,9 @@ EXPORT d3_shader d3_make_shader(const d3_shader_desc *desc) {
         if (d3i_validate_shader_desc(&def)) {
             shd->slot.state = _make_shader(shd, &def);
         } else {
-            shd->slot.state = D3_RESOURCESTATE_FAILED;
+            shd->slot.state = DB_RESOURCESTATE_FAILED;
         }
-        ASSERT((shd->slot.state == D3_RESOURCESTATE_FAILED) || (shd->slot.state == D3_RESOURCESTATE_VALID));
+        ASSERT((shd->slot.state == DB_RESOURCESTATE_FAILED) || (shd->slot.state == DB_RESOURCESTATE_VALID));
     } else {
         D3I_TRACE(err_shader_pool_exhausted);
     }

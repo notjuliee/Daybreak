@@ -4,6 +4,7 @@
 #include <daybreak/hedley.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 
 /** This shit is a lil janky, so read up
  * All items you create a pool for _must_ contain a field of type db_slot named slot

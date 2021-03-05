@@ -6,12 +6,16 @@
 #include <daybreak/utils/assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 vk_state _g = {0};
 
 EXPORT void d3_setup(const d3_desc *desc) {
-    const d3_vulkan_context_desc *vd = &desc->context.vulkan;
+    printf("Excuse me wut\n");
+    const d3_vulkan_context_desc *vd = &desc->context.ctx.vulkan;
     d3i_common_setup(desc);
+    memset(&_g, 0, sizeof(vk_state));
+    _csg.backend = D3_BACKEND_VULKAN;
     db_init_pool(vk_image, &_g.pools.images, _csg.desc.image_pool_size, 0);
     db_init_pool(vk_shader, &_g.pools.shaders, _csg.desc.shader_pool_size, 0);
     db_init_pool(vk_pipeline, &_g.pools.pipelines, _csg.desc.pipeline_pool_size, 0);
@@ -34,9 +38,11 @@ EXPORT void d3_setup(const d3_desc *desc) {
         .apiVersion = VK_API_VERSION_1_0,
     };
 
-    ASSERT(vd->extension_count <= VK_MAX_EXTENSIONS);
-    _g.extensions.instance_num = vd->extension_count;
-    memcpy((char **)_g.extensions.instance, vd->extensions, sizeof(char *) * vd->extension_count);
+    _g.extensions.instance[0] = VK_KHR_SURFACE_EXTENSION_NAME;
+    _g.extensions.instance_num = 2;
+#ifdef linux
+        _g.extensions.instance[1] = VK_KHR_XLIB_SURFACE_EXTENSION_NAME;
+#endif
 
     VkInstanceCreateInfo instance_ci = {
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -46,7 +52,7 @@ EXPORT void d3_setup(const d3_desc *desc) {
     };
 
     VkDebugUtilsMessengerCreateInfoEXT debug_ci;
-#ifndef NDEBUG
+    printf("Checking debug support\n");
     if (check_validation_support()) {
         ASSERT(_g.extensions.instance_num + 1 <= VK_MAX_EXTENSIONS);
         _g.extensions.instance_num += 1;
@@ -57,8 +63,8 @@ EXPORT void d3_setup(const d3_desc *desc) {
         debug_ci = vk_get_debug_ci();
         instance_ci.pNext = &debug_ci;
         _g.debug_enabled = true;
+        printf("Enabled debug\n");
     }
-#endif
 
     res = vkCreateInstance(&instance_ci, NULL, &_g.instance);
     ASSERT(res == VK_SUCCESS);
@@ -67,16 +73,15 @@ EXPORT void d3_setup(const d3_desc *desc) {
         setup_debug();
     }
 
-    VkWin32SurfaceCreateInfoKHR surface_ci = {
-        .sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
-        .hwnd = vd->win32.hwnd,
-        .hinstance = GetModuleHandle(0),
+#ifdef linux
+    VkXlibSurfaceCreateInfoKHR surface_ci = {
+        .sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
+        .dpy = vd->ctx.linux_.param0,
+        .window = (unsigned long)vd->ctx.linux_.param1,
     };
-
-    PFN_vkCreateWin32SurfaceKHR surface_pfn =
-        (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(_g.instance, "vkCreateWin32SurfaceKHR");
-    ASSERT(surface_pfn);
-    ASSERT(vkCreateWin32SurfaceKHR(_g.instance, &surface_ci, NULL, &_g.surface) == VK_SUCCESS);
+    res = vkCreateXlibSurfaceKHR(_g.instance, &surface_ci, NULL, &_g.surface);
+    ASSERT(res == VK_SUCCESS);
+#endif
 
     uint32_t device_count = 0;
     vkEnumeratePhysicalDevices(_g.instance, &device_count, NULL);
@@ -85,10 +90,10 @@ EXPORT void d3_setup(const d3_desc *desc) {
     VkPhysicalDevice *devices = malloc(sizeof(VkPhysicalDevice) * device_count);
     vkEnumeratePhysicalDevices(_g.instance, &device_count, devices);
     _g.phys_dev = VK_NULL_HANDLE;
-    for (int i = 0; i < device_count; i++) {
+    for (uint32_t i = 0; i < device_count; i++) {
         if (is_device_suitable(devices[i])) {
             _g.phys_dev = devices[i];
-            //break;
+            break;
         }
     }
     ASSERT(_g.phys_dev != VK_NULL_HANDLE);
@@ -130,7 +135,8 @@ EXPORT void d3_setup(const d3_desc *desc) {
         .ppEnabledExtensionNames = _g.extensions.dev,
     };
 
-    ASSERT(vkCreateDevice(_g.phys_dev, &dev_ci, NULL, &_g.dev) == VK_SUCCESS);
+    res = vkCreateDevice(_g.phys_dev, &dev_ci, NULL, &_g.dev);
+    ASSERT(res == VK_SUCCESS);
 
     vkGetDeviceQueue(_g.dev, _g.queues.graphics_family, 0, &_g.queues.graphics);
     vkGetDeviceQueue(_g.dev, _g.queues.present_family, 0, &_g.queues.present);
@@ -142,8 +148,6 @@ EXPORT void d3_setup(const d3_desc *desc) {
             .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
         };
         ASSERT(vkCreateCommandPool(_g.dev, &pool_ci, NULL, &_g.command_pool) == VK_SUCCESS);
-
-        _g.command_buffers = malloc(sizeof(VkCommandBuffer) * _g.swapchain.num_images);
     }
 
     vk_create_swapchain();
@@ -168,31 +172,34 @@ EXPORT void d3_setup(const d3_desc *desc) {
     _csg.valid = true;
 }
 
-EXPORT void d3_shutdown(const d3_desc *desc) {
+EXPORT void d3_shutdown() {
     ASSERT(_csg.valid);
     _csg.valid = false;
+    vkDeviceWaitIdle(_g.dev);
+    vk_cleanup_swapchain();
+
     for (int i = 0; i < VK_MAX_INFLIGHT_FRAMES; i++) {
         vkDestroySemaphore(_g.dev, _g.render_done_semaphore[i], NULL);
         vkDestroySemaphore(_g.dev, _g.image_avail_semaphore[i], NULL);
         vkDestroyFence(_g.dev, _g.inflight_fences[i], NULL);
     }
+
     vkDestroyCommandPool(_g.dev, _g.command_pool, NULL);
-    vkDestroyRenderPass(_g.dev, _g.default_pass, NULL);
-    free_sc_details(_g.swapchain.details);
-    for (int i = 0; i < _g.swapchain.num_images; i++) {
-        vkDestroyImageView(_g.dev, _g.swapchain.views[i], NULL);
-        vkDestroyFramebuffer(_g.dev, _g.swapchain.framebuffers[i], NULL);
-    }
-    free(_g.swapchain.images);
-    vkDestroySwapchainKHR(_g.dev, _g.swapchain.swapchain, NULL);
-    vkDestroySurfaceKHR(_g.instance, _g.surface, NULL);
+
+    free(_g.inflight_images);
+
     vkDestroyDevice(_g.dev, NULL);
+    _g.dev = NULL;
+
     if (_g.debug_messenger) {
         PFN_vkDestroyDebugUtilsMessengerEXT destroy_pfn =
             (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(_g.instance, "vkDestroyDebugUtilsMessengerEXT");
         ASSERT(destroy_pfn);
         destroy_pfn(_g.instance, _g.debug_messenger, NULL);
     }
+
+    vkDestroySurfaceKHR(_g.instance, _g.surface, NULL);
+    // TODO: Figure out why this crashes
     vkDestroyInstance(_g.instance, NULL);
 }
 

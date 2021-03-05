@@ -6,22 +6,16 @@
 
 #include <daybreak/utils/assert.h>
 
+#include <stdlib.h>
+#include <string.h>
+
 void vk_create_swapchain() {
     _g.swapchain.details = get_sc_details(_g.phys_dev, true);
     ASSERT((_g.swapchain.details.num_formats > 0) && (_g.swapchain.details.num_present_modes > 0));
     _g.swapchain.format = _g.swapchain.details.formats[0];
-    /*
-    for (int i = 0; i < _g.swapchain.details.num_formats; i++) {
-        const VkSurfaceFormatKHR *fmt = &_g.swapchain.details.formats[i];
-        if (fmt->format == VK_FORMAT_B8G8R8A8_UNORM && fmt->colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-            _g.swapchain.format = *fmt;
-            break;
-        }
-    }
-     */
 
     _g.swapchain.present_mode = VK_PRESENT_MODE_FIFO_KHR;
-    for (int i = 0; i < _g.swapchain.details.num_present_modes; i++) {
+    for (uint32_t i = 0; i < _g.swapchain.details.num_present_modes; i++) {
         const VkPresentModeKHR *pr = &_g.swapchain.details.present_modes[i];
         if (*pr == VK_PRESENT_MODE_MAILBOX_KHR) {
             _g.swapchain.present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
@@ -61,14 +55,15 @@ void vk_create_swapchain() {
         sc_ci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     }
 
-    ASSERT(vkCreateSwapchainKHR(_g.dev, &sc_ci, NULL, &_g.swapchain.swapchain) == VK_SUCCESS);
+    VkResult res = vkCreateSwapchainKHR(_g.dev, &sc_ci, NULL, &_g.swapchain.swapchain);
+    ASSERT(res == VK_SUCCESS);
 
     vkGetSwapchainImagesKHR(_g.dev, _g.swapchain.swapchain, &_g.swapchain.num_images, NULL);
     _g.swapchain.images = malloc(sizeof(VkImage) * _g.swapchain.num_images);
     vkGetSwapchainImagesKHR(_g.dev, _g.swapchain.swapchain, &_g.swapchain.num_images, _g.swapchain.images);
 
     _g.swapchain.views = malloc(sizeof(VkImageView) * _g.swapchain.num_images);
-    for (int i = 0; i < _g.swapchain.num_images; i++) {
+    for (uint32_t i = 0; i < _g.swapchain.num_images; i++) {
         VkImageViewCreateInfo iv_ci = {.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .image = _g.swapchain.images[i],
             .viewType = VK_IMAGE_VIEW_TYPE_2D,
@@ -95,7 +90,7 @@ void vk_create_swapchain() {
 
     { // CREATE FRAMEBUFFERS
         _g.swapchain.framebuffers = malloc(sizeof(VkFramebuffer) * _g.swapchain.num_images);
-        for (int i = 0; i < _g.swapchain.num_images; i++) {
+        for (uint32_t i = 0; i < _g.swapchain.num_images; i++) {
             VkImageView attachments[1] = {
                 _g.swapchain.views[i],
             };
@@ -116,15 +111,19 @@ void vk_create_swapchain() {
 }
 
 void vk_cleanup_swapchain() {
-    for (int i = 0; i < _g.swapchain.num_images; i++) {
+    free_sc_details(_g.swapchain.details);
+    for (uint32_t i = 0; i < _g.swapchain.num_images; i++) {
         vkDestroyFramebuffer(_g.dev, _g.swapchain.framebuffers[i], NULL);
     }
+    free(_g.swapchain.framebuffers);
     vkFreeCommandBuffers(_g.dev, _g.command_pool, _g.swapchain.num_images, _g.command_buffers);
+    free(_g.command_buffers);
     vk_cleanup_pipelines();
     vkDestroyRenderPass(_g.dev, _g.default_pass, NULL);
-    for (int i = 0; i < _g.swapchain.num_images; i++) {
+    for (uint32_t i = 0; i < _g.swapchain.num_images; i++) {
         vkDestroyImageView(_g.dev, _g.swapchain.views[i], NULL);
     }
-
+    free(_g.swapchain.images);
+    free(_g.swapchain.views);
     vkDestroySwapchainKHR(_g.dev, _g.swapchain.swapchain, NULL);
 }

@@ -6,7 +6,9 @@
 #include "db3d/backend/common_validation.h"
 #include <daybreak/utils/assert.h>
 
-D3I_PRIVATE d3_resource_state _make_pipeline(vk_pipeline *pip, const d3_pipeline_desc *desc) {
+#include <string.h>
+
+D3I_PRIVATE db_resource_state _make_pipeline(vk_pipeline *pip, const d3_pipeline_desc *desc) {
     pip->desc = *desc;
 
     VkPipelineVertexInputStateCreateInfo vert_ci = {
@@ -70,11 +72,12 @@ D3I_PRIVATE d3_resource_state _make_pipeline(vk_pipeline *pip, const d3_pipeline
         .dynamicStateCount = 1,
         .pDynamicStates = dyn_states,
     };
+    ((void)sizeof(ds_ci));
     VkPipelineLayoutCreateInfo ci = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
     };
     if (vkCreatePipelineLayout(_g.dev, &ci, NULL, &pip->layout) != VK_SUCCESS) {
-        return D3_RESOURCESTATE_FAILED;
+        return DB_RESOURCESTATE_FAILED;
     }
 
     vk_shader *shader = (vk_shader *)db_pool_lookup(&_g.pools.shaders, desc->shader.id);
@@ -108,13 +111,13 @@ D3I_PRIVATE d3_resource_state _make_pipeline(vk_pipeline *pip, const d3_pipeline
     };
 
     if (vkCreateGraphicsPipelines(_g.dev, VK_NULL_HANDLE, 1, &pipeline_ci, NULL, &pip->pipeline) != VK_SUCCESS) {
-        return D3_RESOURCESTATE_FAILED;
+        return DB_RESOURCESTATE_FAILED;
     }
 
-    return D3_RESOURCESTATE_VALID;
+    return DB_RESOURCESTATE_VALID;
 }
 
-D3I_PRIVATE _cleanup_pipeline(vk_pipeline *pip) {
+D3I_PRIVATE void _cleanup_pipeline(vk_pipeline *pip) {
     if (pip->layout) {
         vkDestroyPipelineLayout(_g.dev, pip->layout, NULL);
     }
@@ -135,9 +138,9 @@ EXPORT d3_pipeline d3_make_pipeline(const d3_pipeline_desc *desc) {
         if (d3i_validate_pipeline_desc(&def)) {
             pip->slot.state = _make_pipeline(pip, &def);
         } else {
-            pip->slot.state = D3_RESOURCESTATE_FAILED;
+            pip->slot.state = DB_RESOURCESTATE_FAILED;
         }
-        ASSERT((pip->slot.state == D3_RESOURCESTATE_FAILED) || (pip->slot.state == D3_RESOURCESTATE_VALID));
+        ASSERT((pip->slot.state == DB_RESOURCESTATE_FAILED) || (pip->slot.state == DB_RESOURCESTATE_VALID));
     } else {
         D3I_TRACE(err_pipeline_pool_exhausted);
     }
@@ -179,7 +182,7 @@ EXPORT void d3_apply_pipeline(d3_pipeline pip_id) {
 }
 
 void vk_cleanup_pipelines() {
-    for (int i = 0; i < _g.pools.pipelines.size; i++) {
+    for (int i = 0; i < _g.pools.pipelines.size - 1; i++) {
         vk_pipeline *pip = &((vk_pipeline *)_g.pools.pipelines.items)[i];
         if (pip->slot.state != D3_RESOURCESTATE_VALID)
             continue;
@@ -188,7 +191,7 @@ void vk_cleanup_pipelines() {
 }
 
 void vk_recreate_pipelines() {
-    for (int i = 0; i < _g.pools.pipelines.size; i++) {
+    for (int i = 0; i < _g.pools.pipelines.size - 1; i++) {
         vk_pipeline *pip = &((vk_pipeline *)_g.pools.pipelines.items)[i];
         if (pip->slot.state != D3_RESOURCESTATE_VALID)
             continue;

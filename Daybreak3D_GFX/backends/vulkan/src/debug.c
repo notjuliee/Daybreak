@@ -19,10 +19,12 @@ bool check_validation_support() {
     VkLayerProperties *layers = malloc(sizeof(VkLayerProperties) * layer_count);
     vkEnumerateInstanceLayerProperties(&layer_count, layers);
 
+    printf("%d\n", layer_count);
     for (int i = 0; i < NUM_LAYERS; i++) {
         bool found = false;
 
-        for (int y = 0; y < layer_count; y++) {
+        for (uint32_t y = 0; y < layer_count; y++) {
+            printf("%s - %s\n", layers[y].layerName, VALIDATION_LAYERS[i]);
             if (strcmp(layers[y].layerName, VALIDATION_LAYERS[i]) == 0) {
                 found = true;
                 break;
@@ -41,6 +43,8 @@ bool check_validation_support() {
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
     VkDebugUtilsMessageTypeFlagsEXT type, const VkDebugUtilsMessengerCallbackDataEXT *data, void *user_data) {
+    ((void)sizeof(type));
+    ((void)sizeof(user_data));
     printf("[%d]{%s} Validation: %s\n", severity, data->pMessageIdName, data->pMessage);
     return VK_FALSE;
 }

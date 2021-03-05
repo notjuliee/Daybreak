@@ -14,16 +14,6 @@ EditorWindow::EditorWindow(QWidget *parent) : QMainWindow(parent), _ui(new Ui::e
     _dm = new ads::CDockManager(this);
     _dm->setStyleSheet("");
 
-    {
-        QSettings settings;
-        qDebug() << settings.fileName();
-        QVariant state = settings.value("editor/state");
-        if (!state.isNull()) {
-            _dm->restoreState(state.value<QByteArray>());
-        }
-        _dm->loadPerspectives(settings);
-    }
-
     _iw = new InfoWidget(this);
     auto *infoDock = new ads::CDockWidget("About");
     infoDock->setWidget(_iw);
@@ -51,11 +41,6 @@ EditorWindow::~EditorWindow() noexcept {
 }
 
 void EditorWindow::closeEvent(QCloseEvent *event) {
-    {
-        QSettings settings;
-        _dm->savePerspectives(settings);
-        settings.setValue("editor/state", _dm->saveState());
-    }
     event->accept();
 }
 
